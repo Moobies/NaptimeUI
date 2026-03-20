@@ -1,0 +1,56 @@
+## Interface: 120001
+## Title: |cffff8d07Naptime|r|cffffffffUI|r
+## Notes: Minimal pixel-perfect UI
+## Author: Naptime
+## Version: 0.1.0
+## SavedVariables: NOL_DB
+## Category: Naptime UI
+## IconTexture: Interface\AddOns\NaptimeUI\Core\Media\NapLogo.png
+
+
+Core/Media.lua
+Core/Config.lua
+Core/EventDriver.lua
+Core/Pixel.lua
+Core/Border.lua
+Core/Core.lua
+Core/KillBlizz.lua
+Core/ButtonArt.lua
+Core/Fade.lua
+
+Modules/ActionBars/Config.lua
+Modules/ActionBars/Fade.lua
+Modules/ActionBars/Hotkeys.lua
+Modules/ActionBars/Cooldowns.lua
+Modules/ActionBars/States.lua
+Modules/ActionBars/ActionBars.lua
+Modules/ActionBars/index.lua
+Modules/ActionBars/XPBar.lua
+Modules/ActionBars/SpellFlyout.lua
+Modules/ActionBars/VehicleExit.lua
+
+Modules/Minimap/Config.lua
+Modules/Minimap/Minimap.lua
+Modules/Minimap/States.lua
+Modules/Minimap/Mail.lua
+
+Modules/Auras/Config.lua
+Modules/Auras/Auras.lua
+
+
+
+
+Modules/CooldownManager/Config.lua
+Modules/CooldownManager/CDM_States.lua
+Modules/CooldownManager/Power/Core.lua
+Modules/CooldownManager/Power/Rogue.lua
+Modules/CooldownManager/Power/Druid.lua
+Modules/CooldownManager/Power/Monk.lua
+Modules/CooldownManager/CooldownManager.lua
+
+
+
+
+Modules/FadeMicroBags.lua
+
+Skins/ToolTip.lua
