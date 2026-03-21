@@ -17,6 +17,7 @@ Core/Core.lua
 Core/KillBlizz.lua
 Core/ButtonArt.lua
 Core/Fade.lua
+Core/Options.lua
 
 Modules/ActionBars/Config.lua
 Modules/ActionBars/Fade.lua
@@ -42,6 +43,7 @@ Modules/Auras/Auras.lua
 
 Modules/CooldownManager/Config.lua
 Modules/CooldownManager/CDM_States.lua
+
 Modules/CooldownManager/Power/Core.lua
 Modules/CooldownManager/Power/Rogue.lua
 Modules/CooldownManager/Power/Druid.lua

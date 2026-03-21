@@ -425,6 +425,10 @@ function CM:Enable()
         self.Power:Enable()
     end
 
+    if self.Layout and self.Layout.Enable then
+    self.Layout:Enable()
+    end
+
     local driver = CreateFrame("Frame")
     self.__driver = driver
 

@@ -12,6 +12,12 @@ end
 local f = CreateFrame("Frame")
 f:RegisterEvent("PLAYER_LOGIN")
 f:SetScript("OnEvent", function()
+
+    -- Options panel
+    if ns.Options and ns.Options.Enable then
+      SafeCall("Options", ns.Options.Enable, ns.Options)
+    end
+
     -- Kill Blizzard bar art + mouse blocking (click-through)
     if ns.KillBlizz and ns.KillBlizz.Enable then
         SafeCall("KillBlizz", ns.KillBlizz.Enable, ns.KillBlizz)
@@ -58,8 +64,10 @@ f:SetScript("OnEvent", function()
     end
 
     -- Cooldown Manager
-    if ns.Modules and ns.Modules.CooldownManager and ns.Modules.CooldownManager.Enable then
-        SafeCall("CooldownManager", ns.Modules.CooldownManager.Enable, ns.Modules.CooldownManager)
+    if ns:IsModuleEnabled("cooldownManager") then
+        if ns.Modules and ns.Modules.CooldownManager and ns.Modules.CooldownManager.Enable then
+            SafeCall("CooldownManager", ns.Modules.CooldownManager.Enable, ns.Modules.CooldownManager)
+        end
     end
 
     -- Vehicle Exit
