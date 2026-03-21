@@ -296,9 +296,7 @@ end
 
 local function HideBlizzardAuraFrames()
     if blizzardAuraFramesHidden then return end
-    if not ShouldHideBlizzardAuras() then
-        return
-    end
+    if not ShouldHideBlizzardAuras() then return end
 
     if InCombatLockdown and InCombatLockdown() then
         needsPostCombatWork = true
@@ -317,7 +315,7 @@ local function HideBlizzardAuraFrames()
 end
 
 -- ============================================================
--- Border wrapper (uses ns.Border; fallback safe)
+-- Border wrapper
 -- ============================================================
 
 local function ApplyBorder(frame, thicknessPx, rgba)
@@ -334,10 +332,10 @@ local function ApplyBorder(frame, thicknessPx, rgba)
         b:SetFrameLevel((frame:GetFrameLevel() or 0) + 10)
         b:EnableMouse(false)
 
-        b.Top = b:CreateTexture(nil, "OVERLAY", nil, 1)
+        b.Top    = b:CreateTexture(nil, "OVERLAY", nil, 1)
         b.Bottom = b:CreateTexture(nil, "OVERLAY", nil, 1)
-        b.Left = b:CreateTexture(nil, "OVERLAY", nil, 1)
-        b.Right = b:CreateTexture(nil, "OVERLAY", nil, 1)
+        b.Left   = b:CreateTexture(nil, "OVERLAY", nil, 1)
+        b.Right  = b:CreateTexture(nil, "OVERLAY", nil, 1)
 
         for _, tex in ipairs({ b.Top, b.Bottom, b.Left, b.Right }) do
             tex:SetTexture("Interface\\Buttons\\WHITE8X8")
@@ -357,22 +355,22 @@ local function ApplyBorder(frame, thicknessPx, rgba)
     end
 
     b.Top:ClearAllPoints()
-    b.Top:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+    b.Top:SetPoint("TOPLEFT",  frame, "TOPLEFT",  0, 0)
     b.Top:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
     b.Top:SetHeight(t)
 
     b.Bottom:ClearAllPoints()
-    b.Bottom:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
+    b.Bottom:SetPoint("BOTTOMLEFT",  frame, "BOTTOMLEFT",  0, 0)
     b.Bottom:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
     b.Bottom:SetHeight(t)
 
     b.Left:ClearAllPoints()
-    b.Left:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+    b.Left:SetPoint("TOPLEFT",    frame, "TOPLEFT",    0, 0)
     b.Left:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
     b.Left:SetWidth(t)
 
     b.Right:ClearAllPoints()
-    b.Right:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
+    b.Right:SetPoint("TOPRIGHT",    frame, "TOPRIGHT",    0, 0)
     b.Right:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
     b.Right:SetWidth(t)
 end
@@ -491,15 +489,15 @@ local function CreateIconFrame(parent, isDebuff)
     f.cooldown = CreateFrame("Cooldown", nil, f, "CooldownFrameTemplate")
     ConfigureCooldownVisuals(f.cooldown, false)
 
-    f.count = f:CreateFontString(nil, "OVERLAY")
+    f.count    = f:CreateFontString(nil, "OVERLAY")
     f.duration = f:CreateFontString(nil, "OVERLAY")
 
-    f.isDebuff = isDebuff and true or false
-    f.auraInstanceID = nil
-    f.buffIndex = nil
+    f.isDebuff        = isDebuff and true or false
+    f.auraInstanceID  = nil
+    f.buffIndex       = nil
     f.isWeaponEnchant = false
-    f.enchantID = nil
-    f.enchantExpiry = nil
+    f.enchantID       = nil
+    f.enchantExpiry   = nil
 
     f:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
@@ -524,6 +522,7 @@ local function CreateIconFrame(parent, isDebuff)
 
         GameTooltip:Show()
     end)
+
     f:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     if not isDebuff then
@@ -552,17 +551,17 @@ local function StyleIconFrame(frame, isDebuff)
     SetSizePx(frame, sizePx, sizePx)
 
     frame.bg:ClearAllPoints()
-    frame.bg:SetPoint("TOPLEFT", frame, "TOPLEFT", insetLU, -insetLU)
+    frame.bg:SetPoint("TOPLEFT",     frame, "TOPLEFT",     insetLU, -insetLU)
     frame.bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -insetLU, insetLU)
     frame.bg:SetColorTexture(UnpackRGBA(AuraBGRGBA(), 0, 0, 0, 0.35))
 
     frame.icon:ClearAllPoints()
-    frame.icon:SetPoint("TOPLEFT", frame, "TOPLEFT", insetLU, -insetLU)
+    frame.icon:SetPoint("TOPLEFT",     frame, "TOPLEFT",     insetLU, -insetLU)
     frame.icon:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -insetLU, insetLU)
     SetTexCrop(frame.icon, zoom)
 
     frame.cooldown:ClearAllPoints()
-    frame.cooldown:SetPoint("TOPLEFT", frame, "TOPLEFT", insetLU, -insetLU)
+    frame.cooldown:SetPoint("TOPLEFT",     frame, "TOPLEFT",     insetLU, -insetLU)
     frame.cooldown:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -insetLU, insetLU)
 
     local cfg = GetCfg()
@@ -575,6 +574,11 @@ local function StyleIconFrame(frame, isDebuff)
 
     ApplyTextStyle(frame, isDebuff)
     ApplyBorder(frame, borderPx, AuraBorderRGBA())
+
+    -- Shadow per icon
+    if ns.Shadow then
+        ns.Shadow:Apply(frame)
+    end
 end
 
 local function EnsureContainers()
@@ -604,14 +608,14 @@ local function EnsureContainers()
         local a = GetAnchor(isDebuff)
         if type(a) == "table" then
             SetPointPx(container,
-                a.point or "TOPRIGHT",
+                a.point or "TOPLEFT",
                 UIParent,
-                a.relPoint or "TOPRIGHT",
+                a.relPoint or "TOPLEFT",
                 tonumber(a.x) or 0,
                 tonumber(a.y) or 0
             )
         else
-            SetPointPx(container, "TOPRIGHT", UIParent, "TOPRIGHT", -185, isDebuff and -151 or -17)
+            SetPointPx(container, "TOPRIGHT", UIParent, "TOPRIGHT", 185, isDebuff and -151 or -17)
         end
     end
 
@@ -642,16 +646,12 @@ local function ApplyStyleToAllFrames()
 
     for i = 1, #buffFrames do
         local f = buffFrames[i]
-        if f then
-            StyleIconFrame(f, false)
-        end
+        if f then StyleIconFrame(f, false) end
     end
 
     for i = 1, #debuffFrames do
         local f = debuffFrames[i]
-        if f then
-            StyleIconFrame(f, true)
-        end
+        if f then StyleIconFrame(f, true) end
     end
 
     needsStyleRefresh = false
@@ -668,11 +668,11 @@ end
 
 local function ResetFrameState(f)
     if not f then return end
-    f.auraInstanceID = nil
-    f.buffIndex = nil
+    f.auraInstanceID  = nil
+    f.buffIndex       = nil
     f.isWeaponEnchant = false
-    f.enchantID = nil
-    f.enchantExpiry = nil
+    f.enchantID       = nil
+    f.enchantExpiry   = nil
 
     f.count:SetText("")
     f.duration:SetText("")
@@ -681,10 +681,14 @@ local function ResetFrameState(f)
     UpdateBorder(f, AuraBorderPx(), AuraBorderRGBA())
 end
 
+-- ============================================================
+-- Position icons — TOPLEFT anchored, simple and clean
+-- ============================================================
+
 local function PositionIcons(frames, container, isDebuff)
     if not container then return end
 
-    local shown = 0
+    local shown  = 0
     local perRow = AuraPerRow(isDebuff)
     local stepPx = AuraSizePx() + AuraGapPx()
 
@@ -694,7 +698,6 @@ local function PositionIcons(frames, container, isDebuff)
             shown = shown + 1
             local row = math.floor((shown - 1) / perRow)
             local col = (shown - 1) % perRow
-
             SetPointPx(f, "TOPRIGHT", container, "TOPRIGHT", -(col * stepPx), -(row * stepPx))
         end
     end
@@ -710,14 +713,10 @@ local function ApplyAuraDurationToFrame(f, auraInstanceID)
     f.duration:SetText("")
     f.cooldown:Hide()
 
-    if not (C_UnitAuras and C_UnitAuras.GetAuraDuration) then
-        return
-    end
+    if not (C_UnitAuras and C_UnitAuras.GetAuraDuration) then return end
 
     local durObj = C_UnitAuras.GetAuraDuration("player", auraInstanceID)
-    if not durObj then
-        return
-    end
+    if not durObj then return end
 
     if f.cooldown.SetCooldownFromDurationObject then
         f.cooldown:SetCooldownFromDurationObject(durObj)
@@ -782,12 +781,8 @@ end
 local function SetupWeaponEnchantFrames(startIndex)
     activeWeaponEnchantCount = 0
 
-    if not ShouldShowWeaponEnchants() then
-        return startIndex
-    end
-    if not GetWeaponEnchantInfo then
-        return startIndex
-    end
+    if not ShouldShowWeaponEnchants() then return startIndex end
+    if not GetWeaponEnchantInfo then return startIndex end
 
     local hasMain, mainExpMS, mainCharges, mainEnchantID,
           hasOff,  offExpMS,  offCharges,  offEnchantID = GetWeaponEnchantInfo()
@@ -828,24 +823,20 @@ local function SetupWeaponEnchantFrames(startIndex)
 
         ApplyTextStyle(f, false)
 
-        f.auraInstanceID = nil
-        f.buffIndex = nil
+        f.auraInstanceID  = nil
+        f.buffIndex       = nil
         f.isWeaponEnchant = true
-        f.enchantID = enchantID
+        f.enchantID       = enchantID
 
-        UpdateBorder(f, AuraBorderPx(), AuraBorderRGBA())
+        UpdateBorder(f, AuraBorderPx(), { 0.6, 0.0, 1.0, 1 })
         f:Show()
 
         activeWeaponEnchantCount = activeWeaponEnchantCount + 1
         idx = idx + 1
     end
 
-    if hasMain and mainEnchantID then
-        Setup(16, mainExpMS, mainCharges, mainEnchantID)
-    end
-    if hasOff and offEnchantID then
-        Setup(17, offExpMS, offCharges, offEnchantID)
-    end
+    if hasMain and mainEnchantID then Setup(16, mainExpMS, mainCharges, mainEnchantID) end
+    if hasOff  and offEnchantID  then Setup(17, offExpMS,  offCharges,  offEnchantID)  end
 
     return idx
 end
@@ -862,7 +853,7 @@ local function UpdateBuffs()
         if f then
             f:Hide()
             f.isWeaponEnchant = false
-            f.enchantExpiry = nil
+            f.enchantExpiry   = nil
         end
     end
 
@@ -879,7 +870,7 @@ local function UpdateBuffs()
         local auraData = C_UnitAuras.GetBuffDataByIndex("player", buffIndex)
         if not auraData then break end
 
-        local auraID = auraData.auraInstanceID
+        local auraID   = auraData.auraInstanceID
         local auraName = CacheGetName(auraID)
 
         if not IsNameBlocked(auraName) then
@@ -889,17 +880,15 @@ local function UpdateBuffs()
 
                 f.icon:SetTexture(auraData.icon)
                 f.isWeaponEnchant = false
-                f.isDebuff = false
+                f.isDebuff        = false
                 ApplyAuraDurationToFrame(f, auraID)
                 SetStackText(f, auraID, auraData.applications)
-
                 ApplyTextStyle(f, false)
 
                 f.auraInstanceID = auraID
-                f.buffIndex = buffIndex
+                f.buffIndex      = buffIndex
 
                 UpdateBorder(f, AuraBorderPx(), AuraBorderRGBA())
-
                 f:Show()
                 frameIndex = frameIndex + 1
             end
@@ -932,7 +921,7 @@ local function UpdateDebuffs()
         local auraData = C_UnitAuras.GetDebuffDataByIndex("player", debuffIndex)
         if not auraData then break end
 
-        local auraID = auraData.auraInstanceID
+        local auraID   = auraData.auraInstanceID
         local auraName = CacheGetName(auraID)
 
         if not IsNameBlocked(auraName) then
@@ -944,7 +933,6 @@ local function UpdateDebuffs()
                 f.isDebuff = true
                 ApplyAuraDurationToFrame(f, auraID)
                 SetStackText(f, auraID, auraData.applications)
-
                 ApplyTextStyle(f, true)
 
                 local dispelName
@@ -984,7 +972,7 @@ local function RefreshNow_NBuffStyle()
         return
     end
 
-    if (not buffContainer or not debuffContainer) then
+    if not buffContainer or not debuffContainer then
         if InCombatLockdown and InCombatLockdown() then
             needsPostCombatWork = true
             return
@@ -1003,6 +991,7 @@ local function RefreshNow_NBuffStyle()
     if needsStyleRefresh then
         ApplyStyleToAllFrames()
     end
+
     HideBlizzardAuraFrames()
 
     if buffContainer then buffContainer:Show() end
@@ -1059,9 +1048,7 @@ local function OnEvent(event, ...)
     end
 
     if event == "PLAYER_EQUIPMENT_CHANGED" then
-        if ShouldShowWeaponEnchants() then
-            QueueUpdate()
-        end
+        if ShouldShowWeaponEnchants() then QueueUpdate() end
         return
     end
 
@@ -1085,18 +1072,25 @@ local function OnEvent(event, ...)
     end
 end
 
+local weaponEnchantTimer = 0
+local WEAPON_ENCHANT_INTERVAL = 0.5
+
 local function OnUpdate(_, elapsed)
     if not initialized then return end
 
     if activeWeaponEnchantCount > 0 then
-        UpdateWeaponEnchantTexts()
+        weaponEnchantTimer = weaponEnchantTimer + elapsed
+        if weaponEnchantTimer >= WEAPON_ENCHANT_INTERVAL then
+            weaponEnchantTimer = 0
+            UpdateWeaponEnchantTexts()
+        end
     end
 
     if needsUpdate then
         throttleTimer = throttleTimer + elapsed
         if throttleTimer >= THROTTLE_INTERVAL then
             throttleTimer = 0
-            needsUpdate = false
+            needsUpdate   = false
             RefreshNow_NBuffStyle()
         end
     end

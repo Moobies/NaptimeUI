@@ -5,40 +5,62 @@ ns = ns or {}
 ns.Shadow = ns.Shadow or {}
 local Shadow = ns.Shadow
 
+-- -------------------------------------------------------
+-- Helpers
+-- -------------------------------------------------------
+
 local function GetTexture()
     return ns.Media and ns.Media.textures and ns.Media.textures.Shadow
 end
 
-local function NormalizeAlpha(alpha)
-    alpha = tonumber(alpha)
-    if not alpha then return 0.60 end
-    if alpha > 1 then
-        alpha = alpha / 100
-    end
-    if alpha < 0 then alpha = 0 end
-    if alpha > 1 then alpha = 1 end
-    return alpha
+local function GetCfg()
+    local cfg = (ns.GetConfig and ns:GetConfig()) or ns.Config
+    if type(cfg) ~= "table" then return {} end
+    return type(cfg.shadow) == "table" and cfg.shadow or {}
+end
+
+local function IsEnabled()
+    local scfg = GetCfg()
+    return scfg.enabled ~= false
+end
+
+local function NormalizeAlpha(v, default)
+    v = tonumber(v)
+    if not v then return default or 0.60 end
+    if v > 1 then v = v / 100 end
+    return math.max(0, math.min(1, v))
 end
 
 local function NormalizeSize(v, default)
     v = tonumber(v)
-    if not v or v <= 0 then return default end
+    if not v or v <= 0 then return default or 4 end
     return v
 end
 
+-- -------------------------------------------------------
+-- Core
+-- -------------------------------------------------------
+
 function Shadow:Apply(frame, opts)
     if not frame then return end
+    if not IsEnabled() then
+        self:Hide(frame)
+        return
+    end
 
     local edgeFile = GetTexture()
     if not edgeFile or edgeFile == "" then return end
 
-    local alpha    = NormalizeAlpha(type(opts) == "table" and opts.alpha or 0.60)
-    local size     = NormalizeSize(type(opts) == "table" and opts.size, 4)
-    local offset   = NormalizeSize(type(opts) == "table" and opts.offset, size)
-    local bgAlpha  = tonumber(type(opts) == "table" and opts.bgAlpha) or 0
-    local r        = tonumber(type(opts) == "table" and opts.r) or 0
-    local g        = tonumber(type(opts) == "table" and opts.g) or 0
-    local b        = tonumber(type(opts) == "table" and opts.b) or 0
+    opts = type(opts) == "table" and opts or {}
+    local scfg = GetCfg()
+
+    local alpha   = NormalizeAlpha(opts.alpha  or scfg.alpha,  0.60)
+    local size    = NormalizeSize( opts.size   or scfg.size,   4)
+    local offset  = NormalizeSize( opts.offset or scfg.offset, size)
+    local bgAlpha = tonumber(opts.bgAlpha) or 0
+    local r       = tonumber(opts.r) or 0
+    local g       = tonumber(opts.g) or 0
+    local b       = tonumber(opts.b) or 0
 
     if not frame.__nolShadowFrame then
         local sf = CreateFrame("Frame", nil, frame, BackdropTemplateMixin and "BackdropTemplate")
@@ -47,28 +69,24 @@ function Shadow:Apply(frame, opts)
     end
 
     local sf = frame.__nolShadowFrame
-    sf:ClearAllPoints()
-    sf:SetPoint("TOPLEFT", frame, "TOPLEFT", -offset, offset)
-    sf:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", offset, -offset)
 
-    if sf.SetFrameStrata and frame.GetFrameStrata then
+    sf:ClearAllPoints()
+    sf:SetPoint("TOPLEFT",     frame, "TOPLEFT",     -offset,  offset)
+    sf:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT",  offset, -offset)
+
+    if frame.GetFrameStrata then
         sf:SetFrameStrata(frame:GetFrameStrata())
     end
-    if sf.SetFrameLevel and frame.GetFrameLevel then
+    if frame.GetFrameLevel then
         sf:SetFrameLevel(math.max(0, (frame:GetFrameLevel() or 1) - 1))
     end
 
     sf:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
+        bgFile   = "Interface\\Buttons\\WHITE8X8",
         edgeFile = edgeFile,
-        tile = false,
+        tile     = false,
         edgeSize = size,
-        insets = {
-            left = size,
-            right = size,
-            top = size,
-            bottom = size,
-        },
+        insets   = { left = size, right = size, top = size, bottom = size },
     })
 
     sf:SetBackdropColor(0, 0, 0, bgAlpha)

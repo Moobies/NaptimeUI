@@ -18,6 +18,12 @@ borderRGBA  = { 0, 0, 0, 1 },
 
 bgRGBA      = { 0.08, 0.08, 0.08, 0.65 },
 
+shadow = {
+    enabled = true,
+    alpha   = 0.60,
+    inset   = 24,
+},
+
 -- ToolTip
 tipRGBA       = { 0.12, 0.12, 0.12, 1.00 },
 tipBorderRGBA = { 0, 0, 0, 1 },

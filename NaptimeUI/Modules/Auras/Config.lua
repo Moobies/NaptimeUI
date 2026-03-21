@@ -45,7 +45,7 @@ cfg.auras = cfg.auras or {
 
     buffCount = {
         font = "Primary",
-        size = 12,
+        size = 8,
         flags = "OUTLINE",
         rgba = {1,1,1,1},
         point = {"BOTTOMRIGHT", -1, 1},

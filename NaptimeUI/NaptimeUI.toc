@@ -14,9 +14,9 @@ Core/EventDriver.lua
 Core/Pixel.lua
 Core/Border.lua
 Core/Core.lua
-Core/KillBlizz.lua
-Core/ButtonArt.lua
+Core/SkinBase.lua
 Core/Fade.lua
+Core/Shadow.lua
 Core/Options.lua
 
 Modules/ActionBars/Config.lua

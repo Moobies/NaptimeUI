@@ -343,6 +343,34 @@ local function EnsureBackground(btn)
 end
 
 -- -------------------------------------------------------
+-- Shadow / Container BG helper
+-- -------------------------------------------------------
+local function ApplyContainerShadow(c)
+    local shadowEnabled = ns.Shadow and ns.Shadow.Apply and (function()
+        local cfg = (ns.GetConfig and ns:GetConfig()) or ns.Config
+        if type(cfg) ~= "table" or type(cfg.shadow) ~= "table" then return true end
+        return cfg.shadow.enabled ~= false
+    end)()
+
+    if not c.__nolContainerBG then
+        local bg = c:CreateTexture(nil, "BACKGROUND", nil, -8)
+        bg:SetTexture(WHITE)
+        bg:SetAllPoints(c)
+        c.__nolContainerBG = bg
+    end
+
+    if shadowEnabled then
+        c.__nolContainerBG:SetVertexColor(0, 0, 0, 0.85)
+        c.__nolContainerBG:Show()
+        ns.Shadow:Apply(c)
+    else
+        c.__nolContainerBG:SetVertexColor(0, 0, 0, 0)
+        c.__nolContainerBG:Hide()
+        if ns.Shadow then ns.Shadow:Hide(c) end
+    end
+end
+
+-- -------------------------------------------------------
 -- Skin apply
 -- -------------------------------------------------------
 local function ApplySkin(btn)
@@ -411,7 +439,6 @@ local function ApplySkin(btn)
     end
 
     FitCooldownFrame(btn.cooldown or btn.Cooldown)
-
     FitCooldownFrame(btn.LossOfControlCooldown)
     FitCooldownFrame(btn.lossOfControlCooldown)
     FitCooldownFrame(btn.LossOfControl)
@@ -591,6 +618,7 @@ local function PlaceBar(barName, prefix, count, anchor, sizeOverridePx, secureVi
         c:Show()
     end
 
+    ApplyContainerShadow(c)
     ApplyMouseoverFade(c, btns, anchor)
     ApplyVisibility(c, anchor)
 end
@@ -689,6 +717,8 @@ local function PlaceButtonList(container, buttons, anchor, sizeOverridePx, secur
         container:Show()
     end
 
+    ApplyContainerShadow(container)
+
     if needDriverUpdate and container.SetAlpha then
         if C_Timer and C_Timer.After then
             C_Timer.After(0, function()
@@ -711,14 +741,14 @@ local function ApplyAll()
     local ab = GetCfg()
     if type(ab) ~= "table" then return end
 
-    PlaceBar("NOL_ActionBar1", "ActionButton", (ab.bar1 and ab.bar1.count) or 12, ab.bar1, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar1", "ActionButton",            (ab.bar1 and ab.bar1.count) or 12, ab.bar1, ab.buttonPx, "[petbattle] hide; show")
     PlaceBar("NOL_ActionBar2", "MultiBarBottomLeftButton", (ab.bar2 and ab.bar2.count) or 12, ab.bar2, ab.buttonPx, "[petbattle] hide; show")
-    PlaceBar("NOL_ActionBar3", "MultiBarBottomRightButton", (ab.bar3 and ab.bar3.count) or 12, ab.bar3, ab.buttonPx, "[petbattle] hide; show")
-    PlaceBar("NOL_ActionBar4", "MultiBarRightButton", (ab.bar4 and ab.bar4.count) or 12, ab.bar4, ab.buttonPx, "[petbattle] hide; show")
-    PlaceBar("NOL_ActionBar5", "MultiBarLeftButton", (ab.bar5 and ab.bar5.count) or 12, ab.bar5, ab.buttonPx, "[petbattle] hide; show")
-    PlaceBar("NOL_ActionBar6", "MultiBar5Button", (ab.bar6 and ab.bar6.count) or 12, ab.bar6, ab.buttonPx, "[petbattle] hide; show")
-    PlaceBar("NOL_ActionBar7", "MultiBar6Button", (ab.bar7 and ab.bar7.count) or 12, ab.bar7, ab.buttonPx, "[petbattle] hide; show")
-    PlaceBar("NOL_ActionBar8", "MultiBar7Button", (ab.bar8 and ab.bar8.count) or 12, ab.bar8, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar3", "MultiBarBottomRightButton",(ab.bar3 and ab.bar3.count) or 12, ab.bar3, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar4", "MultiBarRightButton",      (ab.bar4 and ab.bar4.count) or 12, ab.bar4, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar5", "MultiBarLeftButton",       (ab.bar5 and ab.bar5.count) or 12, ab.bar5, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar6", "MultiBar5Button",          (ab.bar6 and ab.bar6.count) or 12, ab.bar6, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar7", "MultiBar6Button",          (ab.bar7 and ab.bar7.count) or 12, ab.bar7, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar8", "MultiBar7Button",          (ab.bar8 and ab.bar8.count) or 12, ab.bar8, ab.buttonPx, "[petbattle] hide; show")
 
     if ab.petBar then
         local pet = EnsureContainer("NOL_PetBar", true)
