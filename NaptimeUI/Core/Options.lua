@@ -108,30 +108,150 @@ local function AddDropdown(panel, yOffset, options, currentValue, onChange)
     local dd = CreateFrame("Frame", nil, panel, "UIDropDownMenuTemplate")
     dd:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, yOffset)
 
-    local function SetValue(value, label)
-        UIDropDownMenu_SetText(dd, label)
-        onChange(value)
-    end
-
     UIDropDownMenu_SetWidth(dd, 180)
     UIDropDownMenu_SetText(dd, currentValue.label)
 
     UIDropDownMenu_Initialize(dd, function(self, level)
         for _, opt in ipairs(options) do
             local info = UIDropDownMenu_CreateInfo()
-            info.text     = opt.label
-            info.value    = opt.value
-            info.checked  = (opt.value == currentValue.value)
-            info.func     = function()
+            info.text    = opt.label
+            info.value   = opt.value
+            info.checked = (opt.value == currentValue.value)
+            info.func    = function()
                 currentValue.value = opt.value
                 currentValue.label = opt.label
-                SetValue(opt.value, opt.label)
+                UIDropDownMenu_SetText(dd, opt.label)
+                onChange(opt.value)
             end
             UIDropDownMenu_AddButton(info, level)
         end
     end)
 
     return dd
+end
+
+-- -------------------------------------------------------
+-- Cooldown Manager sub-page data
+-- -------------------------------------------------------
+
+local ASPECT_RATIOS = {
+    { label = "Square (1:1)",     value = "1x1",  w = 1,  h = 1 },
+    { label = "Landscape (16:9)", value = "16x9", w = 16, h = 9 },
+    { label = "Landscape (4:3)",  value = "4x3",  w = 4,  h = 3 },
+    { label = "Ultrawide (21:9)", value = "21x9", w = 21, h = 9 },
+}
+
+local FONTS = {
+    { label = "Primary",   value = "Primary"   },
+    { label = "Secondary", value = "Secondary" },
+    { label = "Default",   value = "Default"   },
+}
+
+local function GetCurrentAspect()
+    local db = GetCDMDB()
+    local val = db.aspectRatio or "16x9"
+    for _, r in ipairs(ASPECT_RATIOS) do
+        if r.value == val then
+            return { value = r.value, label = r.label, w = r.w, h = r.h }
+        end
+    end
+    return { value = "16x9", label = "Landscape (16:9)", w = 16, h = 9 }
+end
+
+local function GetCurrentFont()
+    local db = GetCDMDB()
+    local val = db.font or "Primary"
+    for _, f in ipairs(FONTS) do
+        if f.value == val then
+            return { value = f.value, label = f.label }
+        end
+    end
+    return { value = "Primary", label = "Primary" }
+end
+
+local function ApplyAspectRatio(aspectValue, notice)
+    local db = GetCDMDB()
+    db.aspectRatio = aspectValue
+
+    local chosen
+    for _, r in ipairs(ASPECT_RATIOS) do
+        if r.value == aspectValue then
+            chosen = r
+            break
+        end
+    end
+    if not chosen then return end
+
+    local cfg = (ns.GetConfig and ns:GetConfig()) or ns.Config
+    if type(cfg) == "table" and type(cfg.cooldownManager) == "table" then
+        local cdm = cfg.cooldownManager
+        local h = tonumber(cdm.wideIconHeight) or 27
+        local w = math.floor(h * (chosen.w / chosen.h))
+
+        cdm.wideIcons = (chosen.value ~= "1x1")
+
+        cdm.viewers = cdm.viewers or {}
+        for _, key in ipairs({ "essential", "utility", "buff" }) do
+            cdm.viewers[key] = cdm.viewers[key] or {}
+            cdm.viewers[key].iconWidth  = w
+            cdm.viewers[key].iconHeight = h
+        end
+    end
+
+    if notice then notice:Show() end
+end
+
+local function ApplyCDMFont(fontValue, notice)
+    local db = GetCDMDB()
+    db.font = fontValue
+
+    local cfg = (ns.GetConfig and ns:GetConfig()) or ns.Config
+    if type(cfg) == "table" and type(cfg.cooldownManager) == "table" then
+        cfg.cooldownManager.font = fontValue
+        if type(cfg.cooldownManager.power) == "table" then
+            cfg.cooldownManager.power.font = fontValue
+        end
+    end
+
+    if notice then notice:Show() end
+end
+
+-- -------------------------------------------------------
+-- Cooldown Manager sub-page
+-- -------------------------------------------------------
+
+local function BuildCDMSubPage(parent)
+    local panel = CreateFrame("Frame")
+    panel.name = "Cooldown Manager"
+
+    AddTitle(panel,
+        "Cooldown Manager",
+        "Configure cooldown manager appearance."
+    )
+
+    local notice = AddReloadButton(panel)
+
+    AddLabel(panel, "Icon Aspect Ratio", -70)
+    local currentAspect = GetCurrentAspect()
+    AddDropdown(panel, -88, ASPECT_RATIOS, currentAspect, function(value)
+        ApplyAspectRatio(value, notice)
+    end)
+
+    AddLabel(panel, "Font", -130)
+    local currentFont = GetCurrentFont()
+    AddDropdown(panel, -148, FONTS, currentFont, function(value)
+        ApplyCDMFont(value, notice)
+    end)
+
+    local ok, err = pcall(function()
+        local sub = Settings.RegisterCanvasLayoutSubcategory(parent, panel, "Cooldown Manager")
+        Settings.RegisterAddOnCategory(sub)
+        O.cdmPanel = panel
+    end)
+
+    if not ok then
+        print("|cffff5555NaptimeUI|r CDM sub-page error: " .. tostring(err))
+    end
 end
 
 -- -------------------------------------------------------
@@ -170,135 +290,18 @@ local function BuildMainPanel()
     AddCheckbox(panel, "Tooltip",  "Applies a clean skin to all tooltips.",  -362, "tooltip", true, notice)
     AddCheckbox(panel, "Shadows",  "Adds a soft shadow to UI elements.",     -402, "shadow",  true, notice)
 
-    local category = Settings.RegisterCanvasLayoutCategory(panel, "NaptimeUI")
-    Settings.RegisterAddOnCategory(category)
-    O.category = category
-    O.panel = panel
-
-    return category
-end
-
--- -------------------------------------------------------
--- Cooldown Manager sub-page
--- -------------------------------------------------------
-
-local ASPECT_RATIOS = {
-    { label = "Square (1:1)",        value = "1x1",   w = 1,    h = 1    },
-    { label = "Landscape (16:9)",    value = "16x9",  w = 16,   h = 9    },
-    { label = "Landscape (4:3)",     value = "4x3",   w = 4,    h = 3    },
-    { label = "Ultrawide (21:9)",    value = "21x9",  w = 21,   h = 9    },
-}
-
-local FONTS = {
-    { label = "Primary",   value = "Primary"   },
-    { label = "Secondary", value = "Secondary" },
-    { label = "Default",   value = "Default"   },
-}
-
-local function GetCurrentAspect()
-    local db = GetCDMDB()
-    local val = db.aspectRatio or "16x9"
-    for _, r in ipairs(ASPECT_RATIOS) do
-        if r.value == val then
-            return { value = r.value, label = r.label, w = r.w, h = r.h }
-        end
-    end
-    return { value = "16x9", label = "Landscape (16:9)", w = 16, h = 9 }
-end
-
-local function GetCurrentFont()
-    local db = GetCDMDB()
-    local val = db.font or "Primary"
-    for _, f in ipairs(FONTS) do
-        if f.value == val then
-            return { value = f.value, label = f.label }
-        end
-    end
-    return { value = "Primary", label = "Primary" }
-end
-
-local function ApplyAspectRatio(aspectValue, notice)
-    local db = GetCDMDB()
-    db.aspectRatio = aspectValue
-
-    -- Find the ratio
-    local chosen
-    for _, r in ipairs(ASPECT_RATIOS) do
-        if r.value == aspectValue then
-            chosen = r
-            break
-        end
-    end
-    if not chosen then return end
-
-    -- Update the cooldown manager config
-    local cfg = (ns.GetConfig and ns:GetConfig()) or ns.Config
-    if type(cfg) == "table" and type(cfg.cooldownManager) == "table" then
-        local cdm = cfg.cooldownManager
-        local h = tonumber(cdm.wideIconHeight) or 27
-        local w = math.floor(h * (chosen.w / chosen.h))
-
-        cdm.wideIcons = (chosen.value ~= "1x1")
-
-        local viewers = cdm.viewers or {}
-        cdm.viewers = viewers
-
-        for _, key in ipairs({ "essential", "utility", "buff" }) do
-            viewers[key] = viewers[key] or {}
-            viewers[key].iconWidth  = w
-            viewers[key].iconHeight = h
-        end
-    end
-
-    if notice then notice:Show() end
-end
-
-local function ApplyFont(fontValue, notice)
-    local db = GetCDMDB()
-    db.font = fontValue
-
-    local cfg = (ns.GetConfig and ns:GetConfig()) or ns.Config
-    if type(cfg) == "table" and type(cfg.cooldownManager) == "table" then
-        cfg.cooldownManager.font = fontValue
-        if type(cfg.cooldownManager.power) == "table" then
-            cfg.cooldownManager.power.font = fontValue
-        end
-    end
-
-    if notice then notice:Show() end
-end
-
-local function BuildCDMSubPage(parent)
-    local panel = CreateFrame("Frame")
-    panel.name = "Cooldown Manager"
-
-    AddTitle(panel,
-        "Cooldown Manager",
-        "Configure cooldown manager appearance."
-    )
-
-    local notice = AddReloadButton(panel)
-
-    -- Aspect Ratio
-    AddLabel(panel, "Icon Aspect Ratio", -70)
-
-    local currentAspect = GetCurrentAspect()
-    AddDropdown(panel, -88, ASPECT_RATIOS, currentAspect, function(value)
-        ApplyAspectRatio(value, notice)
+    local ok, err = pcall(function()
+        local category = Settings.RegisterCanvasLayoutCategory(panel, "NaptimeUI")
+        Settings.RegisterAddOnCategory(category)
+        O.category = category
     end)
 
-    -- Font
-    AddLabel(panel, "Font", -130)
+    if not ok then
+        print("|cffff5555NaptimeUI|r Options error: " .. tostring(err))
+        return nil
+    end
 
-    local currentFont = GetCurrentFont()
-    AddDropdown(panel, -148, FONTS, currentFont, function(value)
-        ApplyFont(value, notice)
-    end)
-
-    local sub = Settings.RegisterCanvasLayoutSubcategory(parent, panel, "Cooldown Manager")
-    Settings.RegisterAddOnCategory(sub)
-
-    O.cdmPanel = panel
+    return O.category
 end
 
 -- -------------------------------------------------------
@@ -310,8 +313,27 @@ function O:Enable()
     self.__enabled = true
 
     local category = BuildMainPanel()
-    BuildCDMSubPage(category)
-end
+
+    if category then
+        BuildCDMSubPage(category)
+    end
+
+
+    --- Slash Command
+    SLASH_NAPTIMEUI1 = "/nui"
+    SlashCmdList["NAPTIMEUI"] = function()
+        if O.category then
+            local ok, err = pcall(function()
+                Settings.OpenToCategory(O.category:GetID())
+            end)
+            if not ok then
+                print("|cffff5555NaptimeUI|r /nap error: " .. tostring(err))
+            end
+        else
+            print("|cffff5555NaptimeUI|r Settings panel not registered!")
+        end
+    end
+  end
 
 -- -------------------------------------------------------
 -- Global helper

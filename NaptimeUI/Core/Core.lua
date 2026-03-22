@@ -95,4 +95,4 @@ f:SetScript("OnEvent", function()
 
 end)
 
-print("|cff88ff88NaptimeUI|r loaded.")
+print("|cff88ff88NaptimeUI|r loaded. /nui For Options.")
