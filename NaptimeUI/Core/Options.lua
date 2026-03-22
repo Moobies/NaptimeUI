@@ -4,6 +4,12 @@ ns = ns or {}
 ns.Options = ns.Options or {}
 local O = ns.Options
 
+local WHITE = "Interface\\Buttons\\WHITE8X8"
+
+-- -------------------------------------------------------
+-- DB helpers
+-- -------------------------------------------------------
+
 local function GetDB()
     NOL_DB = NOL_DB or {}
     NOL_DB.modules = NOL_DB.modules or {}
@@ -44,7 +50,7 @@ local function AddTitle(panel, text, subtext)
     end
 
     local divider = panel:CreateTexture(nil, "ARTWORK")
-    divider:SetTexture("Interface\\Buttons\\WHITE8X8")
+    divider:SetTexture(WHITE)
     divider:SetVertexColor(0.3, 0.3, 0.3, 0.8)
     divider:SetPoint("TOPLEFT",  panel, "TOPLEFT",  16, -52)
     divider:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -16, -52)
@@ -131,7 +137,105 @@ local function AddDropdown(panel, yOffset, options, currentValue, onChange)
 end
 
 -- -------------------------------------------------------
--- Cooldown Manager sub-page data
+-- Collapsible section builder
+-- -------------------------------------------------------
+-- Returns the section frame. The section anchors itself to
+-- anchorFrame at anchorPoint, and exposes:
+--   section.header  — the clickable header button
+--   section.content — the content frame (hidden when collapsed)
+--   section.GetBottom() — current bottom edge in parent-local Y
+-- -------------------------------------------------------
+
+local SECTION_HEADER_H  = 28
+local SECTION_CONTENT_PAD = 8  -- padding inside content when expanded
+
+local function CreateCollapsibleSection(parent, anchorFrame, anchorPoint, label, contentHeight)
+    local section = CreateFrame("Frame", nil, parent)
+    section:SetPoint("TOPLEFT",  parent, "TOPLEFT",  16, 0)
+    section:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -16, 0)
+
+    -- Header button
+    local header = CreateFrame("Button", nil, section)
+    header:SetHeight(SECTION_HEADER_H)
+    header:SetPoint("TOPLEFT",  section, "TOPLEFT",  0, 0)
+    header:SetPoint("TOPRIGHT", section, "TOPRIGHT", 0, 0)
+
+    local headerBG = header:CreateTexture(nil, "BACKGROUND")
+    headerBG:SetTexture(WHITE)
+    headerBG:SetAllPoints(header)
+    headerBG:SetVertexColor(0.10, 0.10, 0.10, 1)
+
+    local headerLabel = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    headerLabel:SetPoint("LEFT", header, "LEFT", 10, 0)
+    headerLabel:SetText("|cffff8d07" .. label .. "|r")
+
+    local indicator = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    indicator:SetPoint("RIGHT", header, "RIGHT", -10, 0)
+    indicator:SetText("|cffff8d07+|r")
+
+    -- Thin accent line at bottom of header
+    local headerLine = section:CreateTexture(nil, "ARTWORK")
+    headerLine:SetTexture(WHITE)
+    headerLine:SetVertexColor(1, 0.55, 0, 0.6)
+    headerLine:SetPoint("BOTTOMLEFT",  header, "BOTTOMLEFT",  0, 0)
+    headerLine:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", 0, 0)
+    headerLine:SetHeight(1)
+
+    -- Content frame
+    local content = CreateFrame("Frame", nil, section)
+    content:SetPoint("TOPLEFT",  header, "BOTTOMLEFT",  0, -SECTION_CONTENT_PAD)
+    content:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", 0, -SECTION_CONTENT_PAD)
+    content:SetHeight(contentHeight)
+    content:Hide()
+
+    -- Collapsed state
+    section:SetHeight(SECTION_HEADER_H)
+    section.collapsed = true
+
+    local function Toggle()
+        if section.collapsed then
+            section.collapsed = false
+            content:Show()
+            indicator:SetText("|cffff8d07-|r")
+            headerBG:SetVertexColor(0.15, 0.15, 0.15, 1)
+            section:SetHeight(SECTION_HEADER_H + SECTION_CONTENT_PAD + contentHeight + SECTION_CONTENT_PAD)
+        else
+            section.collapsed = true
+            content:Hide()
+            indicator:SetText("|cffff8d07+|r")
+            headerBG:SetVertexColor(0.10, 0.10, 0.10, 1)
+            section:SetHeight(SECTION_HEADER_H)
+        end
+
+        -- Re-anchor all sibling sections below this one
+        if section.onToggle then section.onToggle() end
+    end
+
+    header:SetScript("OnClick", Toggle)
+    header:SetScript("OnEnter", function()
+        headerBG:SetVertexColor(0.18, 0.18, 0.18, 1)
+    end)
+    header:SetScript("OnLeave", function()
+        if section.collapsed then
+            headerBG:SetVertexColor(0.10, 0.10, 0.10, 1)
+        else
+            headerBG:SetVertexColor(0.15, 0.15, 0.15, 1)
+        end
+    end)
+
+    section.header  = header
+    section.content = content
+
+    -- Anchor to previous section or parent
+    section:ClearAllPoints()
+    section:SetPoint("TOPLEFT",  anchorFrame, anchorPoint, 16,  0)
+    section:SetPoint("TOPRIGHT", anchorFrame, anchorPoint, -16, 0)
+
+    return section
+end
+
+-- -------------------------------------------------------
+-- Cooldown Manager sub-page
 -- -------------------------------------------------------
 
 local ASPECT_RATIOS = {
@@ -175,10 +279,7 @@ local function ApplyAspectRatio(aspectValue, notice)
 
     local chosen
     for _, r in ipairs(ASPECT_RATIOS) do
-        if r.value == aspectValue then
-            chosen = r
-            break
-        end
+        if r.value == aspectValue then chosen = r; break end
     end
     if not chosen then return end
 
@@ -187,9 +288,7 @@ local function ApplyAspectRatio(aspectValue, notice)
         local cdm = cfg.cooldownManager
         local h = tonumber(cdm.wideIconHeight) or 27
         local w = math.floor(h * (chosen.w / chosen.h))
-
         cdm.wideIcons = (chosen.value ~= "1x1")
-
         cdm.viewers = cdm.viewers or {}
         for _, key in ipairs({ "essential", "utility", "buff" }) do
             cdm.viewers[key] = cdm.viewers[key] or {}
@@ -216,18 +315,11 @@ local function ApplyCDMFont(fontValue, notice)
     if notice then notice:Show() end
 end
 
--- -------------------------------------------------------
--- Cooldown Manager sub-page
--- -------------------------------------------------------
-
 local function BuildCDMSubPage(parent)
     local panel = CreateFrame("Frame")
     panel.name = "Cooldown Manager"
 
-    AddTitle(panel,
-        "Cooldown Manager",
-        "Configure cooldown manager appearance."
-    )
+    AddTitle(panel, "Cooldown Manager", "Configure cooldown manager appearance.")
 
     local notice = AddReloadButton(panel)
 
@@ -255,6 +347,169 @@ local function BuildCDMSubPage(parent)
 end
 
 -- -------------------------------------------------------
+-- Action Bars sub-page
+-- -------------------------------------------------------
+
+local LAYOUT_DIRECTIONS = {
+    { label = "Horizontal", value = "H" },
+    { label = "Vertical",   value = "V" },
+    { label = "Grid",       value = "G" },
+}
+
+local BAR_DEFS = {
+    { key = "bar1", label = "Bar 1", canDisable = false },
+    { key = "bar2", label = "Bar 2", canDisable = true  },
+    { key = "bar3", label = "Bar 3", canDisable = true  },
+    { key = "bar4", label = "Bar 4", canDisable = true  },
+    { key = "bar5", label = "Bar 5", canDisable = true  },
+    { key = "bar6", label = "Bar 6", canDisable = true  },
+    { key = "bar7", label = "Bar 7", canDisable = true  },
+    { key = "bar8", label = "Bar 8", canDisable = true  },
+}
+
+local function GetBarCfg(barKey)
+    local cfg = (ns.GetConfig and ns:GetConfig()) or ns.Config
+    if type(cfg) ~= "table" or type(cfg.actionbars) ~= "table" then return nil end
+    return cfg.actionbars[barKey]
+end
+
+local function ApplyBarChange()
+    local AB = ns.Modules and ns.Modules.ActionBars
+    if AB and AB.Layout and AB.Layout.ApplyAll then
+        AB.Layout:ApplyAll()
+    end
+end
+
+local function GetCurrentLayout(barKey)
+    local barCfg = GetBarCfg(barKey)
+    local val = (barCfg and barCfg.layout) or "H"
+    for _, d in ipairs(LAYOUT_DIRECTIONS) do
+        if d.value == val then
+            return { value = d.value, label = d.label }
+        end
+    end
+    return { value = "H", label = "Horizontal" }
+end
+
+-- Content height: checkbox row + layout label + dropdown
+local BAR_CONTENT_H = 110
+
+local function PopulateBarContent(cf, bar)
+    local yOff = -8
+
+    -- Enabled checkbox
+    local cb = CreateFrame("CheckButton", nil, cf, "InterfaceOptionsCheckButtonTemplate")
+    cb:SetPoint("TOPLEFT", cf, "TOPLEFT", 8, yOff)
+
+    local lbl = cb:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    lbl:SetPoint("LEFT", cb, "RIGHT", 4, 0)
+    lbl:SetText("Enabled")
+
+    if bar.canDisable then
+        local barCfg = GetBarCfg(bar.key)
+        local isEnabled = (barCfg ~= nil) and (barCfg.enabled ~= false)
+        cb:SetChecked(isEnabled)
+        cb:SetScript("OnClick", function(self)
+            local cfg = (ns.GetConfig and ns:GetConfig()) or ns.Config
+            if type(cfg) == "table" and type(cfg.actionbars) == "table" then
+                cfg.actionbars[bar.key] = cfg.actionbars[bar.key] or {}
+                cfg.actionbars[bar.key].enabled = self:GetChecked()
+                ApplyBarChange()
+            end
+        end)
+    else
+        cb:SetChecked(true)
+        cb:Disable()
+        lbl:SetTextColor(0.5, 0.5, 0.5)
+
+        local note = cf:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        note:SetPoint("LEFT", lbl, "RIGHT", 8, 0)
+        note:SetTextColor(0.5, 0.5, 0.5)
+        note:SetText("(Bar 1 is always enabled)")
+    end
+
+    yOff = yOff - 36
+
+    -- Layout direction
+    local layoutLabel = cf:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    layoutLabel:SetPoint("TOPLEFT", cf, "TOPLEFT", 8, yOff)
+    layoutLabel:SetText("Layout Direction")
+
+    yOff = yOff - 4
+
+    local currentDir = GetCurrentLayout(bar.key)
+    local dd = CreateFrame("Frame", nil, cf, "UIDropDownMenuTemplate")
+    dd:SetPoint("TOPLEFT", cf, "TOPLEFT", -8, yOff)
+    UIDropDownMenu_SetWidth(dd, 160)
+    UIDropDownMenu_SetText(dd, currentDir.label)
+
+    UIDropDownMenu_Initialize(dd, function(self, level)
+        for _, opt in ipairs(LAYOUT_DIRECTIONS) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text    = opt.label
+            info.value   = opt.value
+            info.checked = (opt.value == currentDir.value)
+            info.func    = function()
+                currentDir.value = opt.value
+                currentDir.label = opt.label
+                UIDropDownMenu_SetText(dd, opt.label)
+                local cfg = (ns.GetConfig and ns:GetConfig()) or ns.Config
+                if type(cfg) == "table" and type(cfg.actionbars) == "table" then
+                    cfg.actionbars[bar.key] = cfg.actionbars[bar.key] or {}
+                    cfg.actionbars[bar.key].layout = opt.value
+                    ApplyBarChange()
+                end
+            end
+            UIDropDownMenu_AddButton(info, level)
+        end
+    end)
+end
+
+local function BuildActionBarsSubPage(parent)
+    local panel = CreateFrame("Frame")
+    panel.name = "Action Bars"
+
+    AddTitle(panel, "Action Bars", "Configure each action bar individually.")
+
+    -- Anchor point for first section
+    local anchorFrame = panel
+    local anchorPoint = "TOPLEFT"
+    local anchorY     = -62
+    local GAP         = 4
+
+    local sections = {}
+
+    for i, bar in ipairs(BAR_DEFS) do
+        local section
+
+        if i == 1 then
+            section = CreateCollapsibleSection(panel, panel, "TOPLEFT", bar.label, BAR_CONTENT_H)
+            section:ClearAllPoints()
+            section:SetPoint("TOPLEFT",  panel, "TOPLEFT",  16, anchorY)
+            section:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -16, anchorY)
+        else
+            section = CreateCollapsibleSection(panel, sections[i - 1], "BOTTOMLEFT", bar.label, BAR_CONTENT_H)
+            section:ClearAllPoints()
+            section:SetPoint("TOPLEFT",  sections[i - 1], "BOTTOMLEFT",  0, -GAP)
+            section:SetPoint("TOPRIGHT", sections[i - 1], "BOTTOMRIGHT", 0, -GAP)
+        end
+
+        PopulateBarContent(section.content, bar)
+        sections[i] = section
+    end
+
+    local ok, err = pcall(function()
+        local sub = Settings.RegisterCanvasLayoutSubcategory(parent, panel, "Action Bars")
+        Settings.RegisterAddOnCategory(sub)
+        O.actionBarsPanel = panel
+    end)
+
+    if not ok then
+        print("|cffff5555NaptimeUI|r Action Bars sub-page error: " .. tostring(err))
+    end
+end
+
+-- -------------------------------------------------------
 -- Main panel
 -- -------------------------------------------------------
 
@@ -269,23 +524,18 @@ local function BuildMainPanel()
 
     local notice = AddReloadButton(panel)
 
-    -- Action Bars
     AddSectionHeader(panel, "Action Bars", -70)
     AddCheckbox(panel, "Action Bars",      "Replaces Blizzard's default action bars.", -90,  "actionbars",      true, notice)
 
-    -- Minimap
     AddSectionHeader(panel, "Minimap", -138)
     AddCheckbox(panel, "Minimap",          "Replaces Blizzard's default minimap.",     -158, "minimap",         true, notice)
 
-    -- Combat
     AddSectionHeader(panel, "Combat", -206)
     AddCheckbox(panel, "Cooldown Manager", "Shows ability cooldowns as wide icons.",   -226, "cooldownManager", true, notice)
 
-    -- Buffs
     AddSectionHeader(panel, "Buffs", -274)
     AddCheckbox(panel, "Auras",            "Replaces Blizzard's default auras.",       -294, "auras",           true, notice)
 
-    -- Interface
     AddSectionHeader(panel, "Interface", -342)
     AddCheckbox(panel, "Tooltip",  "Applies a clean skin to all tooltips.",  -362, "tooltip", true, notice)
     AddCheckbox(panel, "Shadows",  "Adds a soft shadow to UI elements.",     -402, "shadow",  true, notice)
@@ -315,11 +565,10 @@ function O:Enable()
     local category = BuildMainPanel()
 
     if category then
+        BuildActionBarsSubPage(category)
         BuildCDMSubPage(category)
     end
 
-
-    --- Slash Command
     SLASH_NAPTIMEUI1 = "/nui"
     SlashCmdList["NAPTIMEUI"] = function()
         if O.category then
@@ -333,7 +582,7 @@ function O:Enable()
             print("|cffff5555NaptimeUI|r Settings panel not registered!")
         end
     end
-  end
+end
 
 -- -------------------------------------------------------
 -- Global helper

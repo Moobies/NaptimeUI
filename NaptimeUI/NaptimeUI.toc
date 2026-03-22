@@ -14,15 +14,14 @@ Core/EventDriver.lua
 Core/Pixel.lua
 Core/Border.lua
 Core/Core.lua
+Core/Options.lua
 Core/SkinBase.lua
 Core/Fade.lua
 Core/Shadow.lua
-Core/Options.lua
+Core/PixelAdvisor.lua
 
 Modules/ActionBars/Config.lua
-Modules/ActionBars/Fade.lua
-Modules/ActionBars/Hotkeys.lua
-Modules/ActionBars/Cooldowns.lua
+Modules/ActionBars/ButtonText.lua
 Modules/ActionBars/States.lua
 Modules/ActionBars/ActionBars.lua
 Modules/ActionBars/index.lua
@@ -43,7 +42,6 @@ Modules/Auras/Auras.lua
 
 Modules/CooldownManager/Config.lua
 Modules/CooldownManager/CDM_States.lua
-
 Modules/CooldownManager/Power/Core.lua
 Modules/CooldownManager/Power/Rogue.lua
 Modules/CooldownManager/Power/Druid.lua

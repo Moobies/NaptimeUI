@@ -6,7 +6,9 @@ ns.Modules = ns.Modules or {}
 ns.Modules.ActionBars = ns.Modules.ActionBars or {}
 local AB = ns.Modules.ActionBars
 AB.Layout = AB.Layout or {}
+AB.Fade   = AB.Fade or {}
 local L = AB.Layout
+local F = AB.Fade
 
 local Pixel  = ns.Pixel
 local Border = ns.Border
@@ -55,6 +57,45 @@ local function ResolveRelFrame(anchor)
         return _G[anchor.relTo] or UIParent
     end
     return UIParent
+end
+
+-- -------------------------------------------------------
+-- Blizzard bar suppression
+--
+-- __nolBarHooked: set once when hook is installed, never cleared
+-- __nolBarKilled: set when suppressing, cleared when releasing
+-- The hook checks __nolBarKilled before acting so toggling
+-- just flips the flag — no rehooking or relog needed.
+-- -------------------------------------------------------
+local function KillBlizzardBar(prefix)
+    local blizzFrame = _G[prefix:gsub("Button", "")]
+    if not blizzFrame then return end
+
+    if RegisterStateDriver then
+        RegisterStateDriver(blizzFrame, "visibility", "hide")
+    end
+
+    if not blizzFrame.__nolBarHooked then
+        blizzFrame.__nolBarHooked = true
+        hooksecurefunc(blizzFrame, "Show", function(self)
+            if self.__nolBarKilled then
+                self:Hide()
+            end
+        end)
+    end
+
+    blizzFrame.__nolBarKilled = true
+end
+
+local function UnkillBlizzardBar(prefix)
+    local blizzFrame = _G[prefix:gsub("Button", "")]
+    if not blizzFrame then return end
+
+    blizzFrame.__nolBarKilled = nil
+
+    if UnregisterStateDriver then
+        UnregisterStateDriver(blizzFrame, "visibility")
+    end
 end
 
 -- -------------------------------------------------------
@@ -193,25 +234,13 @@ end
 -- -------------------------------------------------------
 -- Fonts / Text
 -- -------------------------------------------------------
-local function IsFontPath(v)
-    return type(v) == "string" and (
-        v:find("\\") or v:lower():match("%.ttf$") or v:lower():match("%.otf$")
-    )
-end
-
 local function ApplyFont(fs, cfg, which)
     if not (fs and fs.SetFont) then return end
     if type(cfg) ~= "table" then return end
     if type(which) ~= "string" then return end
 
     local fontKeyOrPath = cfg[which .. "Font"] or "Default"
-    local fontPath
-
-    if IsFontPath(fontKeyOrPath) then
-        fontPath = fontKeyOrPath
-    else
-        fontPath = (ns.GetFont and ns:GetFont(fontKeyOrPath)) or "Fonts\\FRIZQT__.TTF"
-    end
+    local fontPath = ns.GetFont and ns:GetFont(fontKeyOrPath) or "Fonts\\FRIZQT__.TTF"
 
     local size  = tonumber(cfg[which .. "Size"]) or 10
     local flags = cfg[which .. "Flags"] or "OUTLINE"
@@ -253,8 +282,8 @@ local function ApplyText(btn, ab)
 
         ForceShowHide(hk, ab.showHotkey ~= false)
 
-        if AB.Hotkeys and AB.Hotkeys.UpdateButton then
-            AB.Hotkeys:UpdateButton(btn)
+        if AB.ButtonText and AB.ButtonText.UpdateHotkey then
+            AB.ButtonText:UpdateHotkey(btn)
         end
     end
 
@@ -389,8 +418,8 @@ local function ApplySkin(btn)
         end
         ApplyText(btn, ab)
         EnsureStateTextures(btn, ab)
-        if AB.Cooldowns and AB.Cooldowns.ApplyButton then
-            AB.Cooldowns:ApplyButton(btn)
+        if AB.ButtonText and AB.ButtonText.ApplyCooldown then
+            AB.ButtonText:ApplyCooldown(btn)
         end
         return
     end
@@ -468,8 +497,8 @@ local function ApplySkin(btn)
     ApplyText(btn, ab)
     EnsureStateTextures(btn, ab)
 
-    if AB.Cooldowns and AB.Cooldowns.ApplyButton then
-        AB.Cooldowns:ApplyButton(btn)
+    if AB.ButtonText and AB.ButtonText.ApplyCooldown then
+        AB.ButtonText:ApplyCooldown(btn)
     end
 
     if not btn.__nolHoverHooked then
@@ -511,8 +540,8 @@ local function ApplyMouseoverFade(container, buttons, anchor)
     if IsDisabled(anchor) then return end
     if anchor.visibility ~= "mouseover" then return end
 
-    if AB.Fade and AB.Fade.BindBar then
-        AB.Fade:BindBar(container, buttons, anchor)
+    if F and F.BindBar then
+        F:BindBar(container, buttons, anchor)
         return
     end
 
@@ -527,6 +556,35 @@ local function ApplyMouseoverFade(container, buttons, anchor)
 end
 
 -- -------------------------------------------------------
+-- Fade (folded in from Fade.lua)
+-- -------------------------------------------------------
+local function BindButton(btn, anchor)
+    if not (Fade and Fade.BindMouseover and btn and anchor) then return end
+    if anchor.visibility ~= "mouseover" then return end
+
+    btn.__nolABFadeBound = btn.__nolABFadeBound or {}
+    local key = tostring(anchor)
+    if btn.__nolABFadeBound[key] then return end
+    btn.__nolABFadeBound[key] = true
+
+    Fade:BindMouseover(btn, btn, anchor)
+end
+
+function F:BindBar(container, buttons, anchor)
+    if not anchor or not buttons then return end
+    if not (Fade and Fade.BindMouseover) then return end
+    if InCombat() then return end
+
+    for _, btn in ipairs(buttons) do
+        BindButton(btn, anchor)
+    end
+
+    if Fade and Fade.Apply then
+        Fade:Apply(container, anchor)
+    end
+end
+
+-- -------------------------------------------------------
 -- Placement helpers
 -- -------------------------------------------------------
 local function PlaceBar(barName, prefix, count, anchor, sizeOverridePx, secureVisibilityDriver)
@@ -534,8 +592,28 @@ local function PlaceBar(barName, prefix, count, anchor, sizeOverridePx, secureVi
     if not (Pixel and Pixel.SetPointPx and Pixel.SetSizePx) then return end
     if type(anchor) ~= "table" then return end
 
-    local ab = GetCfg()
+    -- If bar is disabled, hide our container and suppress the Blizzard bar
+    if anchor.enabled == false then
+        local c = EnsureContainer(barName, true)
+        if RegisterStateDriver then
+            RegisterStateDriver(c, "visibility", "hide")
+        end
+        c:Hide()
+        KillBlizzardBar(prefix)
+        return
+    end
+
+    -- Bar is enabled — release Blizzard suppression and clear our container
+    -- state driver so it isn't stuck with "hide" from a previous disable
+    UnkillBlizzardBar(prefix)
+
     local c = EnsureContainer(barName, true)
+    if UnregisterStateDriver then
+        UnregisterStateDriver(c, "visibility")
+    end
+    c.__nolDriver = nil
+
+    local ab = GetCfg()
 
     c:ClearAllPoints()
     local rel = ResolveRelFrame(anchor)
@@ -608,7 +686,6 @@ local function PlaceBar(barName, prefix, count, anchor, sizeOverridePx, secureVi
     if secureVisibilityDriver and RegisterStateDriver then
         hasDriver = true
         if c.__nolDriver ~= secureVisibilityDriver then
-            UnregisterStateDriver(c, "visibility")
             RegisterStateDriver(c, "visibility", secureVisibilityDriver)
             c.__nolDriver = secureVisibilityDriver
         end
@@ -741,14 +818,14 @@ local function ApplyAll()
     local ab = GetCfg()
     if type(ab) ~= "table" then return end
 
-    PlaceBar("NOL_ActionBar1", "ActionButton",            (ab.bar1 and ab.bar1.count) or 12, ab.bar1, ab.buttonPx, "[petbattle] hide; show")
-    PlaceBar("NOL_ActionBar2", "MultiBarBottomLeftButton", (ab.bar2 and ab.bar2.count) or 12, ab.bar2, ab.buttonPx, "[petbattle] hide; show")
-    PlaceBar("NOL_ActionBar3", "MultiBarBottomRightButton",(ab.bar3 and ab.bar3.count) or 12, ab.bar3, ab.buttonPx, "[petbattle] hide; show")
-    PlaceBar("NOL_ActionBar4", "MultiBarRightButton",      (ab.bar4 and ab.bar4.count) or 12, ab.bar4, ab.buttonPx, "[petbattle] hide; show")
-    PlaceBar("NOL_ActionBar5", "MultiBarLeftButton",       (ab.bar5 and ab.bar5.count) or 12, ab.bar5, ab.buttonPx, "[petbattle] hide; show")
-    PlaceBar("NOL_ActionBar6", "MultiBar5Button",          (ab.bar6 and ab.bar6.count) or 12, ab.bar6, ab.buttonPx, "[petbattle] hide; show")
-    PlaceBar("NOL_ActionBar7", "MultiBar6Button",          (ab.bar7 and ab.bar7.count) or 12, ab.bar7, ab.buttonPx, "[petbattle] hide; show")
-    PlaceBar("NOL_ActionBar8", "MultiBar7Button",          (ab.bar8 and ab.bar8.count) or 12, ab.bar8, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar1", "ActionButton",             (ab.bar1 and ab.bar1.count) or 12, ab.bar1, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar2", "MultiBarBottomLeftButton",  (ab.bar2 and ab.bar2.count) or 12, ab.bar2, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar3", "MultiBarBottomRightButton", (ab.bar3 and ab.bar3.count) or 12, ab.bar3, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar4", "MultiBarRightButton",       (ab.bar4 and ab.bar4.count) or 12, ab.bar4, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar5", "MultiBarLeftButton",        (ab.bar5 and ab.bar5.count) or 12, ab.bar5, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar6", "MultiBar5Button",           (ab.bar6 and ab.bar6.count) or 12, ab.bar6, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar7", "MultiBar6Button",           (ab.bar7 and ab.bar7.count) or 12, ab.bar7, ab.buttonPx, "[petbattle] hide; show")
+    PlaceBar("NOL_ActionBar8", "MultiBar7Button",           (ab.bar8 and ab.bar8.count) or 12, ab.bar8, ab.buttonPx, "[petbattle] hide; show")
 
     if ab.petBar then
         local pet = EnsureContainer("NOL_PetBar", true)

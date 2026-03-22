@@ -140,50 +140,17 @@ local function IsNameBlocked(name)
     return ok and result or false
 end
 
-local function ResolveFont(fontKey)
-    if type(fontKey) ~= "string" or fontKey == "" then
-        return STANDARD_TEXT_FONT
-    end
-
-    if ns.GetFont then
-        local ok, path = pcall(ns.GetFont, ns, fontKey)
-        if ok and type(path) == "string" and path ~= "" then return path end
-    end
-
-    if ns.Media and ns.Media.GetFont then
-        local ok, path = pcall(ns.Media.GetFont, ns.Media, fontKey)
-        if ok and type(path) == "string" and path ~= "" then return path end
-    end
-
-    local cfg = GetCfg()
-    if cfg and type(cfg.fonts) == "table" and type(cfg.fonts[fontKey]) == "string" then
-        return cfg.fonts[fontKey]
-    end
-
-    if fontKey == "Default" then
-        return STANDARD_TEXT_FONT
-    end
-
-    return STANDARD_TEXT_FONT
-end
-
 local function SafeSetFont(fs, fontKey, size, flags)
     if not (fs and fs.SetFont) then return end
 
+    local fontPath = ns.GetFont and ns:GetFont(fontKey) or "Fonts\\FRIZQT__.TTF"
     local pxSize = tonumber(size) or 11
     local fontFlags = flags or ""
 
-    local primary = ResolveFont(fontKey)
-    local fallbackDefault = ResolveFont("Default")
-    local fallbackBlizz = STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
-
-    local ok, ret = pcall(fs.SetFont, fs, primary, pxSize, fontFlags)
-    if ok and ret ~= false then return end
-
-    ok, ret = pcall(fs.SetFont, fs, fallbackDefault, pxSize, fontFlags)
-    if ok and ret ~= false then return end
-
-    pcall(fs.SetFont, fs, fallbackBlizz, pxSize, fontFlags)
+    local ok, ret = pcall(fs.SetFont, fs, fontPath, pxSize, fontFlags)
+    if (not ok) or (ret == false) then
+        pcall(fs.SetFont, fs, "Fonts\\FRIZQT__.TTF", pxSize, fontFlags)
+    end
 end
 
 local function SetTexCrop(tex, zoom)
@@ -575,7 +542,6 @@ local function StyleIconFrame(frame, isDebuff)
     ApplyTextStyle(frame, isDebuff)
     ApplyBorder(frame, borderPx, AuraBorderRGBA())
 
-    -- Shadow per icon
     if ns.Shadow then
         ns.Shadow:Apply(frame)
     end

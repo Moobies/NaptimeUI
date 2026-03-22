@@ -10,8 +10,7 @@ function AB:Enable()
     if self.__enabled then return end
     self.__enabled = true
 
-    if AB.Hotkeys and AB.Hotkeys.Enable then AB.Hotkeys:Enable() end
-    if AB.Cooldowns and AB.Cooldowns.Enable then AB.Cooldowns:Enable() end
+    if AB.ButtonText and AB.ButtonText.Enable then AB.ButtonText:Enable() end
     if AB.Layout and AB.Layout.Enable then AB.Layout:Enable() end
     if AB.Fade and AB.Fade.Enable then AB.Fade:Enable() end
 end
