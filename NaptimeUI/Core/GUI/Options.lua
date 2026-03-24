@@ -13,14 +13,18 @@ local function BuildWindow()
     end
 
     local win = CreateFrame("Frame", "NaptimeUI_OptionsWindow", UIParent)
-    win:SetSize(740, 500)
-    win:SetPoint("CENTER")
-    win:SetFrameStrata("DIALOG")
-    win:SetFrameLevel(100)
-    win:SetMovable(true)
-    win:EnableMouse(true)
-    win:SetClampedToScreen(true)
-    win:Hide()
+  win:SetSize(740, 500)
+  win:SetPoint("CENTER")
+  win:SetFrameStrata("DIALOG")
+  win:SetFrameLevel(100)
+  win:SetMovable(true)
+  win:SetResizable(true)
+  if win.SetResizeBounds then
+      win:SetResizeBounds(620, 420)
+  end
+  win:EnableMouse(true)
+  win:SetClampedToScreen(true)
+  win:Hide()
 
     -- -------------------------------------------------------
     -- Base background
@@ -138,58 +142,55 @@ local function BuildWindow()
         local btn = CreateFrame("Button", nil, parent)
         btn:SetSize(180, 35)
 
-        -- state colors
-        local NORMAL_RGBA  = { 23/255, 23/255, 23/255, 1 } -- #171717
-        local HOVER_RGBA   = { 0.176, 0.176, 0.176, 1 }       -- test blue
-        local SELECT_RGBA  = { 1.00, 0.55, 0.00, 1 }       -- orange
+        local NORMAL_RGBA = { 23/255, 23/255, 23/255, 1 }
+        local HOVER_RGBA  = { 0.176, 0.176, 0.176, 1 }
+        local SELECT_RGBA = { 1.00, 0.55, 0.00, 1 }
 
         btn.isSelected = false
 
-            btn.bg = btn:CreateTexture(nil, "BACKGROUND")
-            btn.bg:SetAllPoints()
-            btn.bg:SetTexture("Interface\\Buttons\\WHITE8X8")
+        btn.bg = btn:CreateTexture(nil, "BACKGROUND")
+        btn.bg:SetAllPoints()
+        btn.bg:SetTexture("Interface\\Buttons\\WHITE8X8")
+        btn.bg:SetVertexColor(unpack(NORMAL_RGBA))
+
+        btn.label = btn:CreateFontString(nil, "OVERLAY")
+        btn.label:SetFont((ns.GetFont and ns:GetFont("NapSmall")) or "Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
+        btn.label:SetPoint("LEFT", btn, "LEFT", 14, 0)
+        btn.label:SetText(text)
+        btn.label:SetTextColor(1, 1, 1, 1)
+
+        local function SetNormal()
             btn.bg:SetVertexColor(unpack(NORMAL_RGBA))
-
-
-            btn.label = btn:CreateFontString(nil, "OVERLAY")
-            btn.label:SetFont((ns.GetFont and ns:GetFont("NapSmall")) or "Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
-            btn.label:SetPoint("LEFT", btn, "LEFT", 14, 0)
-            btn.label:SetText(text)
-            btn.label:SetTextColor(1, 1, 1, 1)
-
-            local function SetNormal()
-                btn.bg:SetVertexColor(unpack(NORMAL_RGBA))
-            end
-
-            local function SetHover()
-                btn.bg:SetVertexColor(unpack(HOVER_RGBA))
-            end
-
-            local function SetSelected()
-                btn.bg:SetVertexColor(unpack(SELECT_RGBA))
-            end
-
-            btn:SetScript("OnEnter", function(self)
-                if not self.isSelected then
-                    SetHover()
-                end
-            end)
-
-            btn:SetScript("OnLeave", function(self)
-                if not self.isSelected then
-                    SetNormal()
-                end
-            end)
-
-            btn:SetScript("OnClick", function(self)
-                self.isSelected = true
-                SetSelected()
-            end)
-
-            SetNormal()
-
-            return btn
         end
+
+        local function SetHover()
+            btn.bg:SetVertexColor(unpack(HOVER_RGBA))
+        end
+
+        local function SetSelected()
+            btn.bg:SetVertexColor(unpack(SELECT_RGBA))
+        end
+
+        btn:SetScript("OnEnter", function(self)
+            if not self.isSelected then
+                SetHover()
+            end
+        end)
+
+        btn:SetScript("OnLeave", function(self)
+            if not self.isSelected then
+                SetNormal()
+            end
+        end)
+
+        btn:SetScript("OnClick", function(self)
+            self.isSelected = true
+            SetSelected()
+        end)
+
+        SetNormal()
+        return btn
+    end
 
     -- -------------------------------------------------------
     -- Page host
@@ -254,6 +255,59 @@ local function BuildWindow()
 
     closeBtn:SetScript("OnClick", function()
         win:Hide()
+    end)
+
+    -- -------------------------------------------------------
+    -- Resize handle
+    -- -------------------------------------------------------
+    local resizeHandle = CreateFrame("Button", nil, win)
+    resizeHandle:SetSize(16, 16)
+    resizeHandle:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -3, 3)
+    resizeHandle:SetHitRectInsets(0, 0, 0, 0)
+
+    local grip1 = resizeHandle:CreateTexture(nil, "OVERLAY")
+    grip1:SetTexture("Interface\\Buttons\\WHITE8X8")
+    grip1:SetSize(8, 1)
+    grip1:SetPoint("BOTTOMRIGHT", resizeHandle, "BOTTOMRIGHT", -2, 4)
+    grip1:SetRotation(-0.78539816339)
+    grip1:SetVertexColor(0.55, 0.55, 0.55, 0.9)
+
+    local grip2 = resizeHandle:CreateTexture(nil, "OVERLAY")
+    grip2:SetTexture("Interface\\Buttons\\WHITE8X8")
+    grip2:SetSize(6, 1)
+    grip2:SetPoint("BOTTOMRIGHT", resizeHandle, "BOTTOMRIGHT", -5, 4)
+    grip2:SetRotation(-0.78539816339)
+    grip2:SetVertexColor(0.55, 0.55, 0.55, 0.9)
+
+    local grip3 = resizeHandle:CreateTexture(nil, "OVERLAY")
+    grip3:SetTexture("Interface\\Buttons\\WHITE8X8")
+    grip3:SetSize(4, 1)
+    grip3:SetPoint("BOTTOMRIGHT", resizeHandle, "BOTTOMRIGHT", -8, 4)
+    grip3:SetRotation(-0.78539816339)
+    grip3:SetVertexColor(0.55, 0.55, 0.55, 0.9)
+
+    resizeHandle:SetScript("OnEnter", function()
+        grip1:SetVertexColor(1, 1, 1, 1)
+        grip2:SetVertexColor(1, 1, 1, 1)
+        grip3:SetVertexColor(1, 1, 1, 1)
+    end)
+
+    resizeHandle:SetScript("OnLeave", function()
+        grip1:SetVertexColor(0.55, 0.55, 0.55, 0.9)
+        grip2:SetVertexColor(0.55, 0.55, 0.55, 0.9)
+        grip3:SetVertexColor(0.55, 0.55, 0.55, 0.9)
+    end)
+
+    resizeHandle:SetScript("OnMouseDown", function(self, button)
+        if button == "LeftButton" then
+            win:StartSizing("BOTTOMRIGHT")
+        end
+    end)
+
+    resizeHandle:SetScript("OnMouseUp", function(self, button)
+        if button == "LeftButton" then
+            win:StopMovingOrSizing()
+        end
     end)
 
     -- -------------------------------------------------------
