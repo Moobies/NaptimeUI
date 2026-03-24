@@ -9,12 +9,14 @@
 
 
 Core/Media.lua
+Core/GUI/Options.lua
+
+
 Core/Config.lua
 Core/EventDriver.lua
 Core/Pixel.lua
 Core/Border.lua
 Core/Core.lua
-Core/Options.lua
 Core/SkinBase.lua
 Core/Fade.lua
 Core/Shadow.lua
@@ -38,8 +40,6 @@ Modules/Auras/Config.lua
 Modules/Auras/Auras.lua
 
 
-
-
 Modules/CooldownManager/Config.lua
 Modules/CooldownManager/CDM_States.lua
 Modules/CooldownManager/Power/Core.lua
@@ -47,8 +47,6 @@ Modules/CooldownManager/Power/Rogue.lua
 Modules/CooldownManager/Power/Druid.lua
 Modules/CooldownManager/Power/Monk.lua
 Modules/CooldownManager/CooldownManager.lua
-
-
 
 
 Modules/FadeMicroBags.lua
